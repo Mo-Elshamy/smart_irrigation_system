@@ -40,6 +40,10 @@ bool RTCManager::syncFromGSM() {
   }
 
   int idx = response.indexOf("+CCLK: \"");
+  if (idx < 0) {
+    Serial.println("Error: no CCLK in GSM response");
+    return false;
+  }
   if (idx == -1) return false;
   response = response.substring(idx + 8);
   int endIdx = response.indexOf('"');

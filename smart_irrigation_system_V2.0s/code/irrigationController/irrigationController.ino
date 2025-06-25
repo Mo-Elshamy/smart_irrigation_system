@@ -68,7 +68,7 @@ void loop() {
       }
     }
     readMsg(gsm, systemConfig, smsHandler);
-    if(systemConfig.isPaused == false && systemConfig.notificationsEnabled){
+    if(systemConfig.isPaused  && systemConfig.notificationsEnabled){
       gsm.sendSMS(systemConfig.phone, "Irrigation failed: System Paused");
     }
   }
@@ -105,9 +105,12 @@ void Watering(MotorControl& pump, WaterFlowSensor& flow, RTCManager& rtc, int du
 
   if (systemConfig.notificationsEnabled) {
     if (millis() - start >= durationMin * 60000) {
-      gsm.sendSMS(systemConfig.phone, sprintf("Irrigation successful,%d:%d,%d/%d/%d,%f,",now.hour(),now.minute(),now.day(),now.month(),now.year(),flowRate));
+      String msg = "Irrigation successful:" + String(now.hour())+":" + String(now.minute()) + "," + String(now.day()) + "/" + String(now.month())  +"/" + String(now.year()) + String(flowRate);
+      gsm.sendSMS(systemConfig.phone, msg.c_str());
     } else {
-      gsm.sendSMS(systemConfig.phone, sprintf("Irrigation stopped early: no flow,%d:%d,%d/%d/%d",now.hour(),now.minute(),now.day(),now.month(),now.year()));
+      String msg = "Irrigation stopped early: no flow," + String(now.hour())+":" + String(now.minute()) + "," + String(now.day()) + "/" + String(now.month())  +"/" + String(now.year());
+      gsm.sendSMS(systemConfig.phone, msg.c_str());
+
     }
   }
 }
