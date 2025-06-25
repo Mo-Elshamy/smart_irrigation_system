@@ -69,11 +69,11 @@ void SMSCommandHandler::handle(String msg, GSMModule& gsm) {
 
 /**
  * Handles settings updates: password, phone number, notifications toggle.
- * Format: s,<chg_pass>,<new_pass>,<chg_num>,<new_num>,<notif>
+ * Format: s,<chg_pass>,<new_pass>,<chg_num>,<new_num>,<notif>,<reset>
  */
 void SMSCommandHandler::handleSetting(String msg, GSMModule& gsm) {
-  String parts[6];
-  for (int i = 0; i < 6; i++) {
+  String parts[7];
+  for (int i = 0; i < 7; i++) {
     int sep = msg.indexOf(',');
     if (sep == -1) {
       parts[i] = msg;
@@ -95,6 +95,11 @@ void SMSCommandHandler::handleSetting(String msg, GSMModule& gsm) {
 
   if (parts[4].length() == 1) {
     systemConfig.notificationsEnabled = parts[4].toInt();
+  }
+  if (parts[5] == "1") {
+    gsm.sendSMS(systemConfig.phone, "System reset to default");
+    resetConfig(systemConfig);
+    return; 
   }
 
   saveConfig(systemConfig);

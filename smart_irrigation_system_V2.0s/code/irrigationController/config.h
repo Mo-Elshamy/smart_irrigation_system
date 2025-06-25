@@ -23,5 +23,5 @@ extern SystemConfig systemConfig;
 // Save/load declarations
 void saveConfig(SystemConfig& config);
 void loadConfig(SystemConfig& config);
-
+void resetConfig(SystemConfig& config);
 #endif

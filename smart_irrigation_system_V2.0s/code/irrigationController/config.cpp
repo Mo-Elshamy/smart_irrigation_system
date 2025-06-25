@@ -85,3 +85,19 @@ void saveConfig(SystemConfig& config) {
   }
 
 }
+
+void resetConfig(SystemConfig& config) {
+  config.periodsPerDay = 2;
+  config.periodLengthMin = 10;
+  config.isPaused = false;
+  config.manualIrrigation = false;
+  config.notificationsEnabled = true;
+  config.soilMoistureSensor = false;
+  config.scheduledHours[0] = 6;
+  config.scheduledHours[1] = 18;
+  for (int i = 2; i < 10; i++) config.scheduledHours[i] = 0;
+  config.phone[0] = '\0';  
+  config.password = "0000";
+
+  saveConfig(config);
+}
