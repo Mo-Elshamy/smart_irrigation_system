@@ -15,15 +15,20 @@ void loadConfig(SystemConfig& config) {
   for (int i = 0; i < 10; i++) {
     EEPROM.get(offset + 7 + i * 2, config.scheduledHours[i]);
   }
-
+  
   // Load phone number (15 chars)
-  char phoneBuf[16];
-  for (int i = 0; i < 15; i++) {
+  char phoneBuf[14];
+  for (int i = 0; i < 13; i++) {
     phoneBuf[i] = EEPROM.read(offset + 27 + i);
   }
-  phoneBuf[15] = '\0';
+  phoneBuf[14] = '\0';
   strncpy(config.phone, phoneBuf, sizeof(config.phone) - 1);
   config.phone[sizeof(config.phone) - 1] = '\0';  // Ensure null-termination
+
+  if (phoneBuf[0] < '0' || phoneBuf[0] > '9') {
+    strncpy(config.phone, "+201119760999", sizeof(config.phone));
+    config.phone[sizeof(config.phone) - 1] = '\0';
+  }
 
   // Load password (4 chars)
   char passBuf[5];
@@ -33,7 +38,7 @@ void loadConfig(SystemConfig& config) {
   passBuf[4] = '\0';
   config.password = String(passBuf);
 
-  
+
 
   // Set defaults if uninitialized or invalid
   if (config.isPaused != true && config.isPaused != false ){
@@ -59,6 +64,34 @@ void loadConfig(SystemConfig& config) {
   if (config.soilMoistureSensor != true && config.soilMoistureSensor != false) {
     config.soilMoistureSensor = false;
   }
+
+
+  // Serial.println("Config:");
+  // Serial.print("periodsPerDay = ");
+  // Serial.println(config.periodsPerDay);
+  // Serial.print("periodLengthMin =");
+  // Serial.println(config.periodLengthMin);
+  // Serial.print("isPaused = ");
+  // Serial.println(config.isPaused);
+  // Serial.print("manualIrrigation = ");
+  // Serial.println(config.manualIrrigation);
+  // Serial.print("notificationsEnabled = ");
+  // Serial.println(config.notificationsEnabled);
+  // Serial.print("soilMoistureSensor = ");
+  // Serial.println(config.soilMoistureSensor);
+  // Serial.print("scheduledHours = ");
+  // for(auto i : config.scheduledHours){
+  //   Serial.print(i);
+  //   Serial.print(",");
+  // }
+  // Serial.println("");
+
+  // Serial.print("Phone = ");
+  // Serial.println(config.phone);
+  // Serial.print("Pass = ");
+  Serial.println(config.password);
+
+  // Serial.println("Loaded Sucess");
 }
 
 void saveConfig(SystemConfig& config) {
@@ -82,7 +115,10 @@ void saveConfig(SystemConfig& config) {
   // Save password
   for (int i = 0; i < 4 && i < config.password.length(); i++) {
     EEPROM.write(offset + 42 + i, config.password[i]);
+    // Serial.println("Pass:");
   }
+  // Serial.println("Pass:");
+  // Serial.println(config.password);
 
 }
 
@@ -100,4 +136,6 @@ void resetConfig(SystemConfig& config) {
   config.password = "0000";
 
   saveConfig(config);
+  // Serial.println("Reset Sucess");
+
 }

@@ -13,7 +13,7 @@ struct SystemConfig  {
   bool manualIrrigation;
   bool notificationsEnabled;
   bool soilMoistureSensor;
-  char phone[16];
+  char phone[14];
   String password;
 };
 

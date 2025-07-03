@@ -15,9 +15,20 @@ void WaterFlowSensor::begin() {
 }
 
 float WaterFlowSensor::getFlowRate() {
+  static unsigned long lastCheck = 0;
+  static unsigned int lastCount = 0;
+
+  unsigned long now = millis();
+  if (now - lastCheck < 2000) {
+    return -1; // not enough time passed
+  }
+
   noInterrupts();
   unsigned int count = globalPulseCount;
   globalPulseCount = 0;
   interrupts();
-  return count / 5.5; // L/min (flow >= 0.5)
+
+  lastCheck = now;
+  float flow = count / 5.5 / 2.0; // divide by 2 seconds
+  return flow; // in L/min
 }

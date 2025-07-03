@@ -13,14 +13,7 @@ SMSCommandHandler::SMSCommandHandler(){}
  * Initialize password from saved config.
  * If missing or invalid, fall back to default.
  */
-void SMSCommandHandler::begin() {
-  // Load password from config
-  if (systemConfig.password.length() != 4) {
-    // Default password if not set
-    systemConfig.password = "0000";
-    saveConfig(systemConfig);
-  }
-}
+void SMSCommandHandler::begin() {}
 
 /**
  * Save a new 4-digit password to the config and persist it.
@@ -48,9 +41,14 @@ void SMSCommandHandler::handle(String msg, GSMModule& gsm) {
 
   // Extract and verify password
   comma = msg.indexOf(',');
-  if (comma == -1) return;
-  String providedPass = msg.substring(0, comma);
-  msg = msg.substring(comma + 1);
+  String providedPass;
+  if (comma == -1) {
+    providedPass = msg;
+    msg = "";
+  } else {
+    providedPass = msg.substring(0, comma);
+    msg = msg.substring(comma + 1);
+  }
 
   if (providedPass != systemConfig.password) {
     gsm.sendSMS(systemConfig.phone, "Wrong password");
@@ -67,11 +65,13 @@ void SMSCommandHandler::handle(String msg, GSMModule& gsm) {
   }
 }
 
+
 /**
  * Handles settings updates: password, phone number, notifications toggle.
- * Format: s,<chg_pass>,<new_pass>,<chg_num>,<new_num>,<notif>,<reset>
+ * Format: s,<pass>,<chg_pass>,<new_pass>,<chg_num>,<new_num>,<notif>,<reset>
  */
 void SMSCommandHandler::handleSetting(String msg, GSMModule& gsm) {
+  // Serial.println(msg);
   String parts[7];
   for (int i = 0; i < 7; i++) {
     int sep = msg.indexOf(',');
@@ -84,16 +84,26 @@ void SMSCommandHandler::handleSetting(String msg, GSMModule& gsm) {
     }
   }
 
+  // Serial.print("Part 1:");
+  // Serial.println(parts[1]);
+
   if (parts[0] == "1" && parts[1].length() == 4) {
     savePassword(parts[1]);
   }
+  // Serial.print("New Pass:");
+  // Serial.println(systemConfig.password);
 
   if (parts[2] == "1" && parts[3].length() > 5) {
     strncpy(systemConfig.phone, parts[3].c_str(), sizeof(systemConfig.phone) - 1);
     systemConfig.phone[sizeof(systemConfig.phone) - 1] = '\0';
+    Serial.println(systemConfig.phone);
   }
 
-  if (parts[4].length() == 1) {
+
+  if (parts[4] == "1") {
+    systemConfig.notificationsEnabled = parts[4].toInt();
+  }
+  if (parts[4] == "0") {
     systemConfig.notificationsEnabled = parts[4].toInt();
   }
   if (parts[5] == "1") {
@@ -108,11 +118,14 @@ void SMSCommandHandler::handleSetting(String msg, GSMModule& gsm) {
 
 /**
  * Handles irrigation config and commands.
- * Format: i,<chg_periods>,<periods>,<chg_length>,<length>,<chg_times>,<t1,t2,...>,<now>,<pause/resume>,<SoilMoisture_sensor(on/off)>
+ * Format: i,<pass>,<chg_periods>,<periods>,<chg_length>,<length>,<chg_times>,<t1,t2,...>,<now>,<pause/resume>,<SoilMoisture_sensor(on/off)>
  */
 void SMSCommandHandler::handleIrrigation(String msg, GSMModule& gsm) {
-  String parts[10];
-  for (int i = 0; i < 10; i++) {
+  // Serial.println(msg);
+
+  String parts[11];
+
+  for (int i = 0; i < 11; i++) {
     int sep = msg.indexOf(',');
     if (sep == -1) {
       parts[i] = msg;
@@ -127,61 +140,84 @@ void SMSCommandHandler::handleIrrigation(String msg, GSMModule& gsm) {
   if (parts[2] == "1") systemConfig.periodLengthMin = parts[3].toInt();
 
   if (parts[4] == "1") {
-    String times = parts[5];
+    String times = parts[5];  // now in format: "6-12-18"
     int index = 0;
     while (times.length() > 0 && index < 10) {
-      int sep = times.indexOf(',');
+      int sep = times.indexOf('-');
       if (sep == -1) sep = times.length();
       systemConfig.scheduledHours[index++] = times.substring(0, sep).toInt();
-      times = times.substring(sep + 1);
+      times = (sep < times.length()) ? times.substring(sep + 1) : "";
     }
   }
 
   if (parts[6] == "1") {
     systemConfig.manualIrrigation = true;
+    delay(1000);
     gsm.sendSMS(systemConfig.phone, "Manual irrigation requested");
   }
 
   if (parts[7] == "1") {
     systemConfig.isPaused = true;
+    delay(1000);
     gsm.sendSMS(systemConfig.phone, "Irrigation Paused");
   } else if (parts[7] == "0") {
     systemConfig.isPaused = false;
+    delay(1000);
     gsm.sendSMS(systemConfig.phone, "Irrigation Resumed");
   }
 
   if(parts[8] == "1"){
     systemConfig.soilMoistureSensor = true;
+    delay(1000);
     gsm.sendSMS(systemConfig.phone, "Soil Moisture Sensor Enabled");
   }
   if(parts[8] == "0"){
     systemConfig.soilMoistureSensor = false;
+    delay(1000);
     gsm.sendSMS(systemConfig.phone, "Soil Moisture Sensor Disabled");
   }
 
   saveConfig(systemConfig);
+  // gsm.sendSMS(systemConfig.phone, "Settings updated");
 }
 
 /**
  * Responds with a configuration status summary.
  */
 void SMSCommandHandler::handleFeedback(GSMModule& gsm) {
-  char buffer[160];
-  String hours = "";
+  char buffer[160];  // SMS max size is 160 characters
+  char hoursBuffer[64] = "";
+  char temp[6];
+
   for (int i = 0; i < systemConfig.periodsPerDay; i++) {
-    hours += String(systemConfig.scheduledHours[i]);
-    if (i < systemConfig.periodsPerDay - 1) hours += ",";
+    itoa(systemConfig.scheduledHours[i], temp, 10);
+    strcat(hoursBuffer, temp);
+    if (i < systemConfig.periodsPerDay - 1) strcat(hoursBuffer, ",");
   }
 
-  sprintf(
+  const char* notifStatus = systemConfig.notificationsEnabled ? "ON" : "OFF";
+  const char* sysStatus   = systemConfig.isPaused ? "Paused" : "Running";
+  const char* soilStatus;
+
+  if (systemConfig.soilMoistureSensor) {
+    int moisture = soil.read();
+    soilStatus = (moisture > 400) ? "Dry" : "Wet";
+  } else {
+    soilStatus = "Disabled";
+  }
+
+  snprintf(
     buffer,
-    "Conf: %d periods, %d min, Notif: %s, Hours: %s, Sys_Status: %s, Soil Sensor status: %s",
+    sizeof(buffer),
+    "Conf: %d periods, %d min, Notif: %s, Hours: %s, Sys_Status: %s, Soil Sensor: %s",
     systemConfig.periodsPerDay,
     systemConfig.periodLengthMin,
-    systemConfig.notificationsEnabled ? "ON" : "OFF",
-    hours.c_str(),
-    systemConfig.isPaused ? "Paused" : "Running" ,
-    systemConfig.soilMoistureSensor ? (soil.read() > 400 ? "Dry" : "Wet"):"Disabled"
+    notifStatus,
+    hoursBuffer,
+    sysStatus,
+    soilStatus
   );
+  
   gsm.sendSMS(systemConfig.phone, buffer);
 }
+
