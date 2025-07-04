@@ -118,7 +118,7 @@ void SMSCommandHandler::handleSetting(String msg, GSMModule& gsm) {
 
 /**
  * Handles irrigation config and commands.
- * Format: i,<pass>,<chg_periods>,<periods>,<chg_length>,<length>,<chg_times>,<t1,t2,...>,<now>,<pause/resume>,<SoilMoisture_sensor(on/off)>
+ * Format: i,<pass>,<chg_periods>,<periods>,<chg_length>,<length>,<chg_times>,<t1-t2-...>,<now>,<pause/resume>,<SoilMoisture_sensor(on/off)>
  */
 void SMSCommandHandler::handleIrrigation(String msg, GSMModule& gsm) {
   // Serial.println(msg);
